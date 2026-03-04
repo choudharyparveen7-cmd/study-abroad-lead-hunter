@@ -1,27 +1,36 @@
-
-const TELEGRAM_TOKEN = "";AAH2J_NkTxkyv0nHZPN6WEF6tJlL2PUYuwM
+const TELEGRAM_TOKEN = "AAH2J_NkTxkyv0nHZPN6WEF6tJlL2PUYuwM";
 const CHAT_ID = "1719285475";
 
 const keywords = [
+
 "study abroad help",
 "study abroad consultant",
 "study abroad agent",
 "study abroad counselling",
+
 "study abroad without IELTS",
 "no IELTS courses abroad",
+
 "study in singapore",
 "study in singapore without IELTS",
+
 "vocational courses abroad",
 "diploma courses abroad",
+
 "study in europe free",
 "tuition free universities europe",
+
 "study visa help",
 "student visa process",
+
 "visitor visa canada",
 "visitor visa australia",
+
 "work visa abroad",
+
 "study abroad consultant delhi",
 "study visa consultant delhi"
+
 ];
 
 async function sendTelegram(message){
@@ -53,7 +62,7 @@ const title = post.data.title;
 const link = "https://reddit.com" + post.data.permalink;
 
 const message =
-`🎓 Study Abroad Query Found
+`🎓 Study Abroad Post Found
 
 Keyword: ${keyword}
 
@@ -62,6 +71,45 @@ ${title}
 ${link}`;
 
 await sendTelegram(message);
+
+/* -------- COMMENT SCAN -------- */
+
+const commentsUrl =
+`https://www.reddit.com${post.data.permalink}.json`;
+
+const commentRes = await fetch(commentsUrl);
+const commentData = await commentRes.json();
+
+const comments =
+commentData[1].data.children;
+
+for(let c of comments){
+
+if(c.data.body){
+
+const text = c.data.body.toLowerCase();
+
+if(text.includes("study") || text.includes("visa") || text.includes("abroad")){
+
+const commentMsg =
+`💬 Study Abroad Comment Found
+
+Post:
+${title}
+
+Comment:
+${c.data.body}
+
+Link:
+${link}`;
+
+await sendTelegram(commentMsg);
+
+}
+
+}
+
+}
 
 }
 
