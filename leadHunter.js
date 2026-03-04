@@ -1,180 +1,219 @@
-import fetch from "node-fetch";
-import XLSX from "xlsx";
-import nodemailer from "nodemailer";
+const fs = require("fs");
+const https = require("https");
+const querystring = require("querystring");
+
+const EMAIL_USER = process.env.EMAIL_USER;
+const EMAIL_PASS = process.env.EMAIL_PASS;
 
 const keywords = [
 "study abroad",
-"study abroad without IELTS",
-"study in canada",
-"study in australia",
 "study in singapore",
-"study abroad after 12th",
+"study in australia",
+"study in canada",
+"study in germany",
+"study abroad without ielts",
+"no ielts courses abroad",
+"vocational courses abroad",
 "cheap universities abroad",
 "student visa help",
-"study visa consultant",
 "visitor visa canada",
-"work visa abroad",
-"study abroad india"
+"work visa australia",
+"study in europe free",
+"scholarship abroad",
+"diploma abroad"
 ];
 
-const intentWords = [
-"help","consultant","agent","visa rejected",
-"how to apply","fees","scholarship","guide"
+const locations = [
+"Delhi",
+"Haryana",
+"Punjab",
+"Uttar Pradesh",
+"Rajasthan",
+"Madhya Pradesh",
+"Himachal Pradesh"
 ];
 
 let leads = [];
 
-function scoreLead(text){
-let score = 0;
-intentWords.forEach(word=>{
- if(text.toLowerCase().includes(word)) score+=2;
-});
-return score;
-}
+async function fetchReddit(keyword) {
 
-async function scanReddit(){
-for(let keyword of keywords){
+const url = `https://www.reddit.com/search.json?q=${encodeURIComponent(keyword)}&limit=10`;
 
- const url=`https://www.reddit.com/search.json?q=${encodeURIComponent(keyword)}&limit=10`;
- const res=await fetch(url,{headers:{'User-Agent':'Mozilla/5.0'}});
- const text=await res.text();
+return new Promise((resolve) => {
 
- if(!text.includes('"children"')) continue;
+https.get(url, {headers:{'User-Agent':'lead-scanner'}}, res => {
 
- const data=JSON.parse(text);
+let data="";
 
- for(let post of data.data.children){
+res.on("data", chunk => data += chunk);
 
-  const title=post.data.title;
-  const score=scoreLead(title);
+res.on("end", () => {
 
-  if(score>=2){
-   leads.push({
-    Platform:"Reddit",
-    Keyword:keyword,
-    Title:title,
-    Link:"https://reddit.com"+post.data.permalink,
-    Score:score
-   });
-  }
+try {
 
- }
+const json = JSON.parse(data);
 
-}
-}
+json.data.children.forEach(post => {
 
-function scanInstagram(){
-keywords.forEach(keyword=>{
 leads.push({
- Platform:"Instagram",
- Keyword:keyword,
- Title:"Instagram posts about "+keyword,
- Link:`https://www.instagram.com/explore/tags/${keyword.replace(/\s/g,'')}/`,
- Score:2
+source:"Reddit",
+title:post.data.title,
+link:"https://reddit.com"+post.data.permalink
 });
+
 });
+
+}catch(e){}
+
+resolve();
+
+});
+
+}).on("error",()=>resolve());
+
+});
+
 }
 
-function scanQuora(){
-keywords.forEach(keyword=>{
+async function fetchGoogle(keyword){
+
+const url = `https://suggestqueries.google.com/complete/search?client=firefox&q=${encodeURIComponent(keyword)}`;
+
+return new Promise((resolve)=>{
+
+https.get(url,res=>{
+
+let data="";
+
+res.on("data",chunk=>data+=chunk);
+
+res.on("end",()=>{
+
+try{
+
+const json = JSON.parse(data);
+
+json[1].forEach(q=>{
+
 leads.push({
- Platform:"Quora",
- Keyword:keyword,
- Title:"Questions about "+keyword,
- Link:`https://www.quora.com/search?q=${encodeURIComponent(keyword)}`,
- Score:2
+
+source:"Google Suggest",
+
+title:q,
+
+link:"Search Google"
+
 });
+
 });
+
+}catch(e){}
+
+resolve();
+
+});
+
+}).on("error",()=>resolve());
+
+});
+
 }
 
-function scanYouTube(){
-keywords.forEach(keyword=>{
-leads.push({
- Platform:"YouTube",
- Keyword:keyword,
- Title:"Videos discussing "+keyword,
- Link:`https://www.youtube.com/results?search_query=${encodeURIComponent(keyword)}`,
- Score:1
-});
-});
+async function scan(){
+
+for(const k of keywords){
+
+await fetchReddit(k);
+
+await fetchGoogle(k);
+
 }
 
-function scanTwitter(){
-keywords.forEach(keyword=>{
-leads.push({
- Platform:"X (Twitter)",
- Keyword:keyword,
- Title:"Tweets about "+keyword,
- Link:`https://twitter.com/search?q=${encodeURIComponent(keyword)}`,
- Score:1
-});
-});
+for(const loc of locations){
+
+await fetchGoogle(`study abroad ${loc}`);
+
 }
 
-function scanGoogle(){
-keywords.forEach(keyword=>{
-leads.push({
- Platform:"Google",
- Keyword:keyword,
- Title:"Discussion threads for "+keyword,
- Link:`https://www.google.com/search?q=${encodeURIComponent(keyword+" discussion forum")}`,
- Score:1
-});
-});
 }
 
-function createExcel(){
+function saveCSV(){
 
-const ws=XLSX.utils.json_to_sheet(leads);
-const wb=XLSX.utils.book_new();
+let csv="Source,Title,Link\n";
 
-XLSX.utils.book_append_sheet(wb,ws,"Leads");
+leads.forEach(l=>{
 
-XLSX.writeFile(wb,"study_abroad_leads.xlsx");
+csv += `"${l.source}","${l.title}","${l.link}"\n`;
+
+});
+
+fs.writeFileSync("study_abroad_leads.csv",csv);
+
 }
 
 async function sendEmail(){
 
-let transporter=nodemailer.createTransport({
- service:"gmail",
- auth:{
-  user:process.env.EMAIL_USER,
-  pass:process.env.EMAIL_PASS
- }
-});
+const boundary="----leadscanner";
 
-await transporter.sendMail({
- from:process.env.EMAIL_USER,
- to:"pkc.consultancy@gmail.com",
- subject:"AI Study Abroad Lead Report",
- text:"Attached Excel contains collected leads.",
- attachments:[
-  {
-   filename:"study_abroad_leads.xlsx",
-   path:"study_abroad_leads.xlsx"
-  }
- ]
-});
+const message=
+
+`From: ${EMAIL_USER}
+
+To: ${EMAIL_USER}
+
+Subject: Study Abroad Leads
+
+MIME-Version: 1.0
+
+Content-Type: multipart/mixed; boundary=${boundary}
+
+--${boundary}
+
+Content-Type: text/plain
+
+New study abroad leads attached.
+
+--${boundary}
+
+Content-Type: text/csv; name="study_abroad_leads.csv"
+
+Content-Disposition: attachment; filename="study_abroad_leads.csv"
+
+${fs.readFileSync("study_abroad_leads.csv")}
+
+--${boundary}--`;
+
+const auth = Buffer.from(`${EMAIL_USER}:${EMAIL_PASS}`).toString("base64");
+
+const options={
+
+host:"smtp.gmail.com",
+
+port:465,
+
+method:"POST",
+
+path:"/",
+
+headers:{
+
+Authorization:`Basic ${auth}`
+
+}
+
+};
 
 }
 
 async function run(){
 
-await scanReddit();
+console.log("Scanning study abroad leads...");
 
-scanInstagram();
+await scan();
 
-scanQuora();
+saveCSV();
 
-scanYouTube();
-
-scanTwitter();
-
-scanGoogle();
-
-createExcel();
-
-await sendEmail();
+console.log("Leads collected:",leads.length);
 
 }
 
