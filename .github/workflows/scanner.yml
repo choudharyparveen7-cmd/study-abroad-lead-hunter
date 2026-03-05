@@ -20,6 +20,9 @@ jobs:
 
       - name: Run Lead Scanner
         run: node leadHunter.js
-        env:
-          EMAIL_USER: ${{ secrets.EMAIL_USER }}
-          EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
+
+      - name: Upload Leads File
+        uses: actions/upload-artifact@v3
+        with:
+          name: study-abroad-leads
+          path: study_abroad_leads.csv
