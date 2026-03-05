@@ -1,6 +1,7 @@
 const fs = require("fs");
+const https = require("https");
 
-const OUTPUT = "study_abroad_leads.docx";
+const OUTPUT = "study_abroad_leads.doc";
 const HISTORY = "history.json";
 
 const keywords = [
@@ -11,9 +12,9 @@ const keywords = [
 "study in Europe free Indian students",
 "student visa help India",
 "study in Canada after 12th India",
-"study abroad consultants India advice",
 "work visa abroad India",
-"visitor visa Canada India"
+"visitor visa Canada India",
+"study abroad consultants India advice"
 ];
 
 const platforms = [
@@ -65,28 +66,36 @@ addLead(platform,keyword,link);
 
 }
 
-function createWordDoc(){
+function createWordTable(){
 
 let html = `
 <html>
 <body>
 <h2>Study Abroad Leads</h2>
-<ul>
+
+<table border="1" style="border-collapse:collapse">
+
+<tr>
+<th>Source</th>
+<th>Topic</th>
+<th>Open Link</th>
+</tr>
 `;
 
 leads.forEach(l=>{
 
 html += `
-<li>
-<b>${l.source}</b> — ${l.title}<br>
-<a href="${l.link}">Open Discussion</a>
-</li><br>
+<tr>
+<td>${l.source}</td>
+<td>${l.title}</td>
+<td><a href="${l.link}">Open Discussion</a></td>
+</tr>
 `;
 
 });
 
 html += `
-</ul>
+</table>
 </body>
 </html>
 `;
@@ -110,11 +119,11 @@ console.log("Generating study abroad leads...");
 
 generateLeads();
 
-createWordDoc();
+createWordTable();
 
 saveHistory();
 
-console.log("Leads created:",leads.length);
+console.log("Total leads:",leads.length);
 
 }
 
