@@ -1,133 +1,63 @@
 const fs = require("fs");
-const https = require("https");
 
-const OUTPUT = "study_abroad_leads.csv";
+const OUTPUT = "study_abroad_leads.docx";
 const HISTORY = "history.json";
 
-const platforms = [
-{ name:"Reddit", url:q=>`https://www.reddit.com/search.json?q=${encodeURIComponent(q)}&limit=25` },
-{ name:"Quora", url:q=>`https://www.google.com/search?q=site:quora.com+${encodeURIComponent(q)}` },
-{ name:"YouTube", url:q=>`https://www.google.com/search?q=site:youtube.com+${encodeURIComponent(q)}` },
-{ name:"Facebook", url:q=>`https://www.google.com/search?q=site:facebook.com+${encodeURIComponent(q)}` },
-{ name:"Telegram", url:q=>`https://www.google.com/search?q=site:t.me+${encodeURIComponent(q)}` }
-];
-
 const keywords = [
-"study abroad without ielts",
-"study abroad consultants india",
-"study in singapore indian students",
-"cheap universities abroad india",
-"vocational courses abroad",
-"study in europe free",
-"student visa help",
-"study in canada after 12th",
-"work visa abroad",
-"visitor visa canada"
+"study abroad without IELTS India",
+"study in Singapore Indian students",
+"cheap universities abroad India",
+"vocational courses abroad India",
+"study in Europe free Indian students",
+"student visa help India",
+"study in Canada after 12th India",
+"study abroad consultants India advice",
+"work visa abroad India",
+"visitor visa Canada India"
 ];
 
-const intentKeywords = [
-"how",
-"help",
-"which",
-"best",
-"cheap",
-"without ielts",
-"consultant",
-"visa",
-"admission",
-"scholarship"
+const platforms = [
+"reddit.com",
+"quora.com",
+"youtube.com",
+"facebook.com",
+"t.me"
 ];
 
 let history = new Set();
 let leads = [];
 
 if (fs.existsSync(HISTORY)) {
-JSON.parse(fs.readFileSync(HISTORY)).forEach(l=>history.add(l));
-}
-
-function scoreLead(title){
-
-let score = 0;
-
-intentKeywords.forEach(k=>{
-if(title.toLowerCase().includes(k)) score += 10;
-});
-
-if(title.includes("India")) score += 20;
-if(title.includes("student")) score += 15;
-if(title.includes("visa")) score += 15;
-
-return score;
-
+JSON.parse(fs.readFileSync(HISTORY)).forEach(l => history.add(l));
 }
 
 function addLead(source,title,link){
 
 if(history.has(link)) return;
 
-const score = scoreLead(title);
-
 history.add(link);
 
 leads.push({
 source,
 title,
-link,
-score
+link
 });
 
 }
 
-async function fetchReddit(keyword){
-
-const url = `https://www.reddit.com/search.json?q=${encodeURIComponent(keyword)}&limit=50`;
-
-return new Promise(resolve=>{
-
-https.get(url,{headers:{'User-Agent':'lead-finder'}},res=>{
-
-let data="";
-
-res.on("data",c=>data+=c);
-
-res.on("end",()=>{
-
-try{
-
-const json = JSON.parse(data);
-
-json.data.children.forEach(post=>{
-
-const title = post.data.title;
-const link = "https://reddit.com"+post.data.permalink;
-
-addLead("Reddit",title,link);
-
-});
-
-}catch(e){}
-
-resolve();
-
-});
-
-}).on("error",()=>resolve());
-
-});
-
-}
-
-function generateSearchLeads(){
+function generateLeads(){
 
 keywords.forEach(keyword=>{
 
-platforms.forEach(p=>{
+platforms.forEach(platform=>{
 
-const search =
+const searchQuery = `site:${platform} ${keyword}`;
+
+const link =
 "https://www.google.com/search?q=" +
-encodeURIComponent(`site:${p.name.toLowerCase()}.com ${keyword} india`);
+encodeURIComponent(searchQuery);
 
-addLead(p.name,keyword,search);
+addLead(platform,keyword,link);
 
 });
 
@@ -135,22 +65,33 @@ addLead(p.name,keyword,search);
 
 }
 
-function saveCSV(){
+function createWordDoc(){
 
-leads.sort((a,b)=>b.score-a.score);
-
-let csv="Source,Topic,Score,Open Link\n";
+let html = `
+<html>
+<body>
+<h2>Study Abroad Leads</h2>
+<ul>
+`;
 
 leads.forEach(l=>{
 
-const link =
-`=HYPERLINK("${l.link}","Open Discussion")`;
-
-csv += `"${l.source}","${l.title}","${l.score}","${link}"\n`;
+html += `
+<li>
+<b>${l.source}</b> — ${l.title}<br>
+<a href="${l.link}">Open Discussion</a>
+</li><br>
+`;
 
 });
 
-fs.writeFileSync(OUTPUT,csv);
+html += `
+</ul>
+</body>
+</html>
+`;
+
+fs.writeFileSync(OUTPUT,html);
 
 }
 
@@ -163,23 +104,17 @@ JSON.stringify([...history],null,2)
 
 }
 
-async function run(){
+function run(){
 
-console.log("Scanning platforms...");
+console.log("Generating study abroad leads...");
 
-for(const k of keywords){
+generateLeads();
 
-await fetchReddit(k);
-
-}
-
-generateSearchLeads();
-
-saveCSV();
+createWordDoc();
 
 saveHistory();
 
-console.log("Total leads:",leads.length);
+console.log("Leads created:",leads.length);
 
 }
 
