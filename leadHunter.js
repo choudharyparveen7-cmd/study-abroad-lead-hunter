@@ -1,139 +1,78 @@
 const fs = require("fs");
 const https = require("https");
-const querystring = require("querystring");
 
-const EMAIL_USER = process.env.EMAIL_USER;
-const EMAIL_PASS = process.env.EMAIL_PASS;
+const OUTPUT = "study_abroad_leads.csv";
+const HISTORY = "history.json";
 
 const keywords = [
 "study abroad",
-"study in singapore",
-"study in australia",
-"study in canada",
-"study in germany",
-"study abroad without ielts",
-"no ielts courses abroad",
-"vocational courses abroad",
+"study abroad without IELTS",
+"study in Singapore",
+"study in Australia",
+"study in Canada",
 "cheap universities abroad",
-"student visa help",
-"visitor visa canada",
-"work visa australia",
+"vocational courses abroad",
 "study in europe free",
-"scholarship abroad",
-"diploma abroad"
+"student visa help",
+"scholarship abroad"
 ];
 
-const locations = [
-"Delhi",
-"Haryana",
-"Punjab",
-"Uttar Pradesh",
-"Rajasthan",
-"Madhya Pradesh",
-"Himachal Pradesh"
+const sources = [
+{
+name:"Google",
+url:(q)=>`https://www.google.com/search?q=${encodeURIComponent(q)}`
+},
+{
+name:"Reddit",
+url:(q)=>`https://www.reddit.com/search/?q=${encodeURIComponent(q)}`
+},
+{
+name:"Quora",
+url:(q)=>`https://www.quora.com/search?q=${encodeURIComponent(q)}`
+},
+{
+name:"YouTube",
+url:(q)=>`https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`
+},
+{
+name:"DuckDuckGo",
+url:(q)=>`https://duckduckgo.com/?q=${encodeURIComponent(q)}`
+}
 ];
 
+let history = new Set();
 let leads = [];
 
-async function fetchReddit(keyword) {
+if(fs.existsSync(HISTORY)){
+JSON.parse(fs.readFileSync(HISTORY)).forEach(l=>history.add(l));
+}
 
-const url = `https://www.reddit.com/search.json?q=${encodeURIComponent(keyword)}&limit=10`;
+function addLead(source,title,link){
 
-return new Promise((resolve) => {
+if(history.has(link)) return;
 
-https.get(url, {headers:{'User-Agent':'lead-scanner'}}, res => {
-
-let data="";
-
-res.on("data", chunk => data += chunk);
-
-res.on("end", () => {
-
-try {
-
-const json = JSON.parse(data);
-
-json.data.children.forEach(post => {
+history.add(link);
 
 leads.push({
-source:"Reddit",
-title:post.data.title,
-link:"https://reddit.com"+post.data.permalink
+source,
+title,
+link
 });
-
-});
-
-}catch(e){}
-
-resolve();
-
-});
-
-}).on("error",()=>resolve());
-
-});
-
 }
 
-async function fetchGoogle(keyword){
+function generateLeads(){
 
-const url = `https://suggestqueries.google.com/complete/search?client=firefox&q=${encodeURIComponent(keyword)}`;
+keywords.forEach(k=>{
 
-return new Promise((resolve)=>{
+sources.forEach(s=>{
 
-https.get(url,res=>{
+const link = s.url(k);
 
-let data="";
-
-res.on("data",chunk=>data+=chunk);
-
-res.on("end",()=>{
-
-try{
-
-const json = JSON.parse(data);
-
-json[1].forEach(q=>{
-
-leads.push({
-
-source:"Google Suggest",
-
-title:q,
-
-link:"Search Google"
+addLead(s.name,k,link);
 
 });
 
 });
-
-}catch(e){}
-
-resolve();
-
-});
-
-}).on("error",()=>resolve());
-
-});
-
-}
-
-async function scan(){
-
-for(const k of keywords){
-
-await fetchReddit(k);
-
-await fetchGoogle(k);
-
-}
-
-for(const loc of locations){
-
-await fetchGoogle(`study abroad ${loc}`);
-
-}
 
 }
 
@@ -142,78 +81,30 @@ function saveCSV(){
 let csv="Source,Title,Link\n";
 
 leads.forEach(l=>{
-
 csv += `"${l.source}","${l.title}","${l.link}"\n`;
-
 });
 
-fs.writeFileSync("study_abroad_leads.csv",csv);
+fs.writeFileSync(OUTPUT,csv);
 
 }
 
-async function sendEmail(){
+function saveHistory(){
 
-const boundary="----leadscanner";
-
-const message=
-
-`From: ${EMAIL_USER}
-
-To: ${EMAIL_USER}
-
-Subject: Study Abroad Leads
-
-MIME-Version: 1.0
-
-Content-Type: multipart/mixed; boundary=${boundary}
-
---${boundary}
-
-Content-Type: text/plain
-
-New study abroad leads attached.
-
---${boundary}
-
-Content-Type: text/csv; name="study_abroad_leads.csv"
-
-Content-Disposition: attachment; filename="study_abroad_leads.csv"
-
-${fs.readFileSync("study_abroad_leads.csv")}
-
---${boundary}--`;
-
-const auth = Buffer.from(`${EMAIL_USER}:${EMAIL_PASS}`).toString("base64");
-
-const options={
-
-host:"smtp.gmail.com",
-
-port:465,
-
-method:"POST",
-
-path:"/",
-
-headers:{
-
-Authorization:`Basic ${auth}`
-
-}
-
-};
+fs.writeFileSync(HISTORY,JSON.stringify([...history],null,2));
 
 }
 
 async function run(){
 
-console.log("Scanning study abroad leads...");
+console.log("Generating study abroad leads...");
 
-await scan();
+generateLeads();
 
 saveCSV();
 
-console.log("Leads collected:",leads.length);
+saveHistory();
+
+console.log("Leads created:",leads.length);
 
 }
 
