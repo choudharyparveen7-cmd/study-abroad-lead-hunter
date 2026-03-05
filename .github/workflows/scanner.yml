@@ -16,10 +16,11 @@ jobs:
         with:
           node-version: 18
 
-      - run: node leadHunter.js
+      - name: Run Lead Scanner
+        run: node leadHunter.js
 
       - name: Upload Leads
         uses: actions/upload-artifact@v4
         with:
           name: study-abroad-leads
-          path: study_abroad_leads.csv
+          path: study_abroad_leads.doc
