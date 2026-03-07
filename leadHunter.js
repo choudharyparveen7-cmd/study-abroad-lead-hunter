@@ -1,5 +1,4 @@
 const fs = require("fs");
-const https = require("https");
 
 const OUTPUT = "study_abroad_leads.doc";
 const HISTORY = "history.json";
@@ -22,6 +21,7 @@ const platforms = [
 "quora.com",
 "youtube.com",
 "facebook.com",
+"linkedin.com",
 "t.me"
 ];
 
@@ -39,6 +39,7 @@ if(history.has(link)) return;
 history.add(link);
 
 leads.push({
+date: new Date().toLocaleDateString(),
 source,
 title,
 link
@@ -56,7 +57,8 @@ const searchQuery = `site:${platform} ${keyword}`;
 
 const link =
 "https://www.google.com/search?q=" +
-encodeURIComponent(searchQuery);
+encodeURIComponent(searchQuery) +
+"&tbs=qdr:w";
 
 addLead(platform,keyword,link);
 
@@ -71,14 +73,16 @@ function createWordTable(){
 let html = `
 <html>
 <body>
-<h2>Study Abroad Leads</h2>
+
+<h2>Weekly Study Abroad Leads</h2>
 
 <table border="1" style="border-collapse:collapse">
 
 <tr>
+<th>Date</th>
 <th>Source</th>
 <th>Topic</th>
-<th>Open Link</th>
+<th>Link</th>
 </tr>
 `;
 
@@ -86,6 +90,7 @@ leads.forEach(l=>{
 
 html += `
 <tr>
+<td>${l.date}</td>
 <td>${l.source}</td>
 <td>${l.title}</td>
 <td><a href="${l.link}">Open Discussion</a></td>
@@ -115,7 +120,7 @@ JSON.stringify([...history],null,2)
 
 function run(){
 
-console.log("Generating study abroad leads...");
+console.log("Generating weekly study abroad leads...");
 
 generateLeads();
 
