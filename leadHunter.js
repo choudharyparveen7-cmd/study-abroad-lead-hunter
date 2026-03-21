@@ -43,7 +43,9 @@ console.log("Resetting history...");
 }
 }
 
+// Add lead (no duplicates)
 function addLead(source, title, link) {
+
 if (history.has(link)) return;
 
 history.add(link);
@@ -54,8 +56,10 @@ source,
 title,
 link
 });
+
 }
 
+// Generate leads (only questions + last 7 days)
 function generateLeads() {
 
 keywords.forEach(keyword => {
@@ -82,13 +86,14 @@ addLead(platform, `${keyword} (${q})`, link);
 
 }
 
-function createWordTable() {
+// Create Word file
+function createFile() {
 
 let html = `
 <html>
 <body>
 
-<h2>Fresh Study Abroad Leads</h2>
+<h2>ICEC - Fresh Study Abroad Leads</h2>
 
 <table border="1" style="border-collapse:collapse">
 
@@ -120,18 +125,22 @@ html += `
 fs.writeFileSync(OUTPUT, html);
 }
 
+// Save history
 function saveHistory() {
 fs.writeFileSync(HISTORY, JSON.stringify([...history], null, 2));
 }
 
+// Run
 function run() {
-console.log("Running lead hunter...");
+
+console.log("Running Lead Hunter...");
 
 generateLeads();
-createWordTable();
+createFile();
 saveHistory();
 
-console.log("New Leads:", leads.length);
+console.log("Leads Generated:", leads.length);
+
 }
 
-module.exports = { run };
+run();
