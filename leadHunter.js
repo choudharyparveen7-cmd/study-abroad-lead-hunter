@@ -1,9 +1,8 @@
 const fs = require("fs");
 
-const OUTPUT = "study_abroad_leads.doc";
+const OUTPUT = `leads_${new Date().toISOString().split("T")[0]}.doc`;
 const HISTORY = "history.json";
 
-// 🔑 Intent-based keywords
 const keywords = [
 "study abroad India",
 "study abroad after BTech",
@@ -15,7 +14,6 @@ const keywords = [
 "study in Europe Indian students"
 ];
 
-// 🎯 High-quality platforms only
 const platforms = [
 "reddit.com/r/Indians_StudyAbroad",
 "reddit.com/r/StudyAbroad",
@@ -23,7 +21,6 @@ const platforms = [
 "quora.com"
 ];
 
-// 🧠 Question patterns (real student intent)
 const questionPatterns = [
 "how",
 "what",
@@ -37,19 +34,17 @@ const questionPatterns = [
 let history = new Set();
 let leads = [];
 
-// 📂 Load history to avoid duplicates
+// Load history
 if (fs.existsSync(HISTORY)) {
 try {
 JSON.parse(fs.readFileSync(HISTORY)).forEach(l => history.add(l));
-} catch (e) {
-console.log("History file corrupted, resetting...");
+} catch {
+console.log("Resetting history...");
 }
 }
 
-// ➕ Add lead (avoid duplicates)
-function addLead(source, title, link){
-
-if(history.has(link)) return;
+function addLead(source, title, link) {
+if (history.has(link)) return;
 
 history.add(link);
 
@@ -59,17 +54,15 @@ source,
 title,
 link
 });
-
 }
 
-// 🔍 Generate only QUESTION-based leads (last 7 days)
-function generateLeads(){
+function generateLeads() {
 
-keywords.forEach(keyword=>{
+keywords.forEach(keyword => {
 
-platforms.forEach(platform=>{
+platforms.forEach(platform => {
 
-questionPatterns.forEach(q=>{
+questionPatterns.forEach(q => {
 
 const searchQuery =
 `site:${platform} ${keyword} "${q}" intitle:${q}`;
@@ -77,7 +70,7 @@ const searchQuery =
 const link =
 "https://www.google.com/search?q=" +
 encodeURIComponent(searchQuery) +
-"&tbs=qdr:w"; // 🔥 last 7 days only
+"&tbs=qdr:w";
 
 addLead(platform, `${keyword} (${q})`, link);
 
@@ -89,36 +82,33 @@ addLead(platform, `${keyword} (${q})`, link);
 
 }
 
-// 📄 Create Word file
-function createWordTable(){
+function createWordTable() {
 
 let html = `
 <html>
 <body>
 
-<h2>Weekly Study Abroad Leads (Fresh Queries Only)</h2>
+<h2>Fresh Study Abroad Leads</h2>
 
-<table border="1" style="border-collapse:collapse;font-family:Arial">
+<table border="1" style="border-collapse:collapse">
 
 <tr>
 <th>Date</th>
 <th>Platform</th>
 <th>Topic</th>
-<th>Open Link</th>
+<th>Link</th>
 </tr>
 `;
 
-leads.forEach(l=>{
-
+leads.forEach(l => {
 html += `
 <tr>
 <td>${l.date}</td>
 <td>${l.source}</td>
 <td>${l.title}</td>
-<td><a href="${l.link}">Open Discussion</a></td>
+<td><a href="${l.link}">Open</a></td>
 </tr>
 `;
-
 });
 
 html += `
@@ -128,32 +118,20 @@ html += `
 `;
 
 fs.writeFileSync(OUTPUT, html);
-
 }
 
-// 💾 Save history (prevents repetition daily)
-function saveHistory(){
-
-fs.writeFileSync(
-HISTORY,
-JSON.stringify([...history], null, 2)
-);
-
+function saveHistory() {
+fs.writeFileSync(HISTORY, JSON.stringify([...history], null, 2));
 }
 
-// 🚀 Run
-function run(){
-
-console.log("Generating fresh study abroad leads...");
+function run() {
+console.log("Running lead hunter...");
 
 generateLeads();
-
 createWordTable();
-
 saveHistory();
 
-console.log("New leads generated:", leads.length);
-
+console.log("New Leads:", leads.length);
 }
 
-run();
+module.exports = { run };
