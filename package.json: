@@ -1,9 +1,8 @@
 {
-  "name": "lead-scanner",
+  "name": "study-abroad-lead-hunter",
   "version": "1.0.0",
-  "dependencies": {
-    "node-fetch": "^3.3.2",
-    "xlsx": "^0.18.5",
-    "nodemailer": "^6.9.8"
+  "main": "leadHunter.js",
+  "scripts": {
+    "start": "node leadHunter.js"
   }
 }
