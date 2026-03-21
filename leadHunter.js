@@ -1,8 +1,10 @@
 const fs = require("fs");
 
+// 📅 Output file (daily)
 const OUTPUT = `leads_${new Date().toISOString().split("T")[0]}.doc`;
 const HISTORY = "history.json";
 
+// 🎯 Keywords (focused but not too narrow)
 const keywords = [
 "study abroad India",
 "study abroad after BTech",
@@ -14,6 +16,7 @@ const keywords = [
 "study in Europe Indian students"
 ];
 
+// 🔍 Platforms (high signal)
 const platforms = [
 "reddit.com/r/Indians_StudyAbroad",
 "reddit.com/r/StudyAbroad",
@@ -21,29 +24,19 @@ const platforms = [
 "quora.com"
 ];
 
-const questionPatterns = [
-"how",
-"what",
-"which",
-"can I",
-"should I",
-"help",
-"advice"
-];
-
 let history = new Set();
 let leads = [];
 
-// Load history
+// 📂 Load history (avoid duplicates)
 if (fs.existsSync(HISTORY)) {
 try {
 JSON.parse(fs.readFileSync(HISTORY)).forEach(l => history.add(l));
 } catch {
-console.log("Resetting history...");
+console.log("⚠️ History corrupted. Resetting...");
 }
 }
 
-// Add lead (no duplicates)
+// ➕ Add lead
 function addLead(source, title, link) {
 
 if (history.has(link)) return;
@@ -59,26 +52,34 @@ link
 
 }
 
-// Generate leads (only questions + last 7 days)
+// 🔥 Generate leads (balanced filtering)
 function generateLeads() {
 
 keywords.forEach(keyword => {
 
 platforms.forEach(platform => {
 
-questionPatterns.forEach(q => {
+// ✅ Primary query (question intent)
+let searchQuery =
+`site:${platform} ${keyword} "how" OR "can I" OR "what" OR "help"`;
 
-const searchQuery =
-`site:${platform} ${keyword} "${q}" intitle:${q}`;
-
-const link =
+let link =
 "https://www.google.com/search?q=" +
 encodeURIComponent(searchQuery) +
-"&tbs=qdr:w";
+"&tbs=qdr:w&num=20";
 
-addLead(platform, `${keyword} (${q})`, link);
+addLead(platform, `${keyword} (questions)`, link);
 
-});
+// ✅ Fallback query (ensures results)
+let fallbackQuery =
+`site:${platform} ${keyword}`;
+
+let fallbackLink =
+"https://www.google.com/search?q=" +
+encodeURIComponent(fallbackQuery) +
+"&tbs=qdr:w&num=20";
+
+addLead(platform, `${keyword} (general)`, fallbackLink);
 
 });
 
@@ -86,24 +87,32 @@ addLead(platform, `${keyword} (${q})`, link);
 
 }
 
-// Create Word file
+// 📄 Create Word file
 function createFile() {
 
 let html = `
 <html>
 <body>
 
-<h2>ICEC - Fresh Study Abroad Leads</h2>
+<h2>ICEC - Weekly Study Abroad Leads</h2>
 
-<table border="1" style="border-collapse:collapse">
+<table border="1" style="border-collapse:collapse;font-family:Arial">
 
 <tr>
 <th>Date</th>
 <th>Platform</th>
 <th>Topic</th>
-<th>Link</th>
+<th>Open Link</th>
 </tr>
 `;
+
+if (leads.length === 0) {
+html += `
+<tr>
+<td colspan="4">No leads found. Try adjusting keywords.</td>
+</tr>
+`;
+} else {
 
 leads.forEach(l => {
 html += `
@@ -116,6 +125,8 @@ html += `
 `;
 });
 
+}
+
 html += `
 </table>
 </body>
@@ -123,23 +134,27 @@ html += `
 `;
 
 fs.writeFileSync(OUTPUT, html);
+
 }
 
-// Save history
+// 💾 Save history
 function saveHistory() {
 fs.writeFileSync(HISTORY, JSON.stringify([...history], null, 2));
 }
 
-// Run
+// 🚀 Run
 function run() {
 
-console.log("Running Lead Hunter...");
+console.log("🔍 Generating study abroad leads...");
 
 generateLeads();
+
 createFile();
+
 saveHistory();
 
-console.log("Leads Generated:", leads.length);
+console.log("✅ Leads Generated:", leads.length);
+console.log("📁 File:", OUTPUT);
 
 }
 
