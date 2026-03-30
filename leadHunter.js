@@ -1,42 +1,38 @@
 const fs = require("fs");
 
-// 📅 Output file (daily)
 const OUTPUT = `leads_${new Date().toISOString().split("T")[0]}.doc`;
 const HISTORY = "history.json";
 
-// 🎯 Keywords (focused but not too narrow)
+// 🎯 Keywords
 const keywords = [
 "study abroad India",
 "study abroad after BTech",
-"study abroad biotech students",
+"study abroad biotech",
 "masters abroad India",
-"student visa India help",
+"student visa help India",
 "study in Canada India",
 "study in Australia India",
 "study in Europe Indian students"
 ];
 
-// 🔍 Platforms (high signal)
-const platforms = [
-"reddit.com/r/Indians_StudyAbroad",
-"reddit.com/r/StudyAbroad",
-"reddit.com/r/gradadmissions",
-"quora.com"
+// 🎯 Subreddits (high quality)
+const subreddits = [
+"Indians_StudyAbroad",
+"studyAbroad",
+"gradadmissions"
 ];
 
 let history = new Set();
 let leads = [];
 
-// 📂 Load history (avoid duplicates)
+// Load history
 if (fs.existsSync(HISTORY)) {
 try {
 JSON.parse(fs.readFileSync(HISTORY)).forEach(l => history.add(l));
-} catch {
-console.log("⚠️ History corrupted. Resetting...");
-}
+} catch {}
 }
 
-// ➕ Add lead
+// Add lead (avoid duplicates)
 function addLead(source, title, link) {
 
 if (history.has(link)) return;
@@ -52,34 +48,20 @@ link
 
 }
 
-// 🔥 Generate leads (balanced filtering)
+// 🔥 Generate Reddit-based leads (NO GOOGLE)
 function generateLeads() {
 
 keywords.forEach(keyword => {
 
-platforms.forEach(platform => {
+subreddits.forEach(sub => {
 
-// ✅ Primary query (question intent)
-let searchQuery =
-`site:${platform} ${keyword} "how" OR "can I" OR "what" OR "help"`;
+// Question-based search
+const query = `${keyword} (how OR what OR can OR help)`;
 
-let link =
-"https://www.google.com/search?q=" +
-encodeURIComponent(searchQuery) +
-"&tbs=qdr:w&num=20";
+// Reddit search URL (past week)
+const link = `https://www.reddit.com/r/${sub}/search/?q=${encodeURIComponent(query)}&sort=new&t=week`;
 
-addLead(platform, `${keyword} (questions)`, link);
-
-// ✅ Fallback query (ensures results)
-let fallbackQuery =
-`site:${platform} ${keyword}`;
-
-let fallbackLink =
-"https://www.google.com/search?q=" +
-encodeURIComponent(fallbackQuery) +
-"&tbs=qdr:w&num=20";
-
-addLead(platform, `${keyword} (general)`, fallbackLink);
+addLead(`reddit/${sub}`, keyword, link);
 
 });
 
@@ -87,14 +69,14 @@ addLead(platform, `${keyword} (general)`, fallbackLink);
 
 }
 
-// 📄 Create Word file
+// Create Word file
 function createFile() {
 
 let html = `
 <html>
 <body>
 
-<h2>ICEC - Weekly Study Abroad Leads</h2>
+<h2>ICEC - Fresh Reddit Leads (Last 7 Days)</h2>
 
 <table border="1" style="border-collapse:collapse;font-family:Arial">
 
@@ -102,14 +84,14 @@ let html = `
 <th>Date</th>
 <th>Platform</th>
 <th>Topic</th>
-<th>Open Link</th>
+<th>Open</th>
 </tr>
 `;
 
 if (leads.length === 0) {
 html += `
 <tr>
-<td colspan="4">No leads found. Try adjusting keywords.</td>
+<td colspan="4">No leads found</td>
 </tr>
 `;
 } else {
@@ -134,18 +116,17 @@ html += `
 `;
 
 fs.writeFileSync(OUTPUT, html);
-
 }
 
-// 💾 Save history
+// Save history
 function saveHistory() {
 fs.writeFileSync(HISTORY, JSON.stringify([...history], null, 2));
 }
 
-// 🚀 Run
+// Run
 function run() {
 
-console.log("🔍 Generating study abroad leads...");
+console.log("Generating Reddit-based leads...");
 
 generateLeads();
 
@@ -153,8 +134,7 @@ createFile();
 
 saveHistory();
 
-console.log("✅ Leads Generated:", leads.length);
-console.log("📁 File:", OUTPUT);
+console.log("Leads generated:", leads.length);
 
 }
 
