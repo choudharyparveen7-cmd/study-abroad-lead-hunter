@@ -1,48 +1,173 @@
-name: Study Abroad Lead Hunter
+import axios from "axios";
+import * as cheerio from "cheerio";
+import fs from "fs";
+import { createObjectCsvWriter } from "csv-writer";
 
-on:
+const keywords = [
+  "australia intake 2026",
+  "study abroad help",
+  "student visa help",
+  "masters abroad",
+  "need admission abroad"
+];
 
-  schedule:
-    - cron: '0 4 * * *'
-    - cron: '0 16 * * *'
+const csvWriter = createObjectCsvWriter({
+  path: "leads.csv",
+  header: [
+    { id: "platform", title: "PLATFORM" },
+    { id: "title", title: "TITLE" },
+    { id: "link", title: "LINK" },
+    { id: "score", title: "SCORE" }
+  ],
+  append: true
+});
 
-  workflow_dispatch:
+function calculateScore(text) {
+  let score = 0;
 
-jobs:
+  const words = [
+    "help",
+    "visa",
+    "admission",
+    "urgent",
+    "intake"
+  ];
 
-  run-scanner:
+  words.forEach(word => {
+    if (text.toLowerCase().includes(word)) {
+      score += 10;
+    }
+  });
 
-    runs-on: ubuntu-latest
+  return score;
+}
 
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+function isQuestion(text) {
+  const lower = text.toLowerCase();
 
-    steps:
+  return (
+    lower.includes("?") ||
+    lower.includes("how") ||
+    lower.includes("what") ||
+    lower.includes("which") ||
+    lower.includes("can i")
+  );
+}
 
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+function loadExistingLinks() {
+  if (!fs.existsSync("leads.csv")) {
+    return new Set();
+  }
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+  const data = fs.readFileSync("leads.csv", "utf8");
 
-        with:
-          node-version: 24
+  const lines = data.split("\n");
 
-      - name: Install Dependencies
-        run: npm install
+  const links = new Set();
 
-      - name: Run Scanner
-        run: node scanner.js
+  lines.forEach(line => {
+    const parts = line.split(",");
 
-      - name: Commit Updated Leads
-        run: |
+    if (parts[2]) {
+      links.add(parts[2]);
+    }
+  });
 
-          git config --global user.name "github-actions"
+  return links;
+}
 
-          git config --global user.email "actions@github.com"
+async function scanReddit(keyword) {
 
-          git add leads.csv
+  const leads = [];
 
-          git commit -m "Updated leads" || echo "No changes"
+  try {
 
-          git push
+    const url =
+      `https://www.reddit.com/search.json?q=${encodeURIComponent(keyword)}&sort=new`;
+
+    const response = await axios.get(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0"
+      }
+    });
+
+    const posts = response.data.data.children;
+
+    for (const post of posts) {
+
+      const data = post.data;
+
+      const text =
+        `${data.title} ${data.selftext || ""}`;
+
+      const score =
+        calculateScore(text);
+
+      if (
+        score >= 20 &&
+        isQuestion(text)
+      ) {
+
+        leads.push({
+          platform: "Reddit",
+          title: data.title,
+          link: `https://reddit.com${data.permalink}`,
+          score
+        });
+
+      }
+
+    }
+
+  } catch (error) {
+
+    console.log("Reddit Error:", error.message);
+
+  }
+
+  return leads;
+}
+
+async function run() {
+
+  console.log("Starting scanner");
+
+  let allLeads = [];
+
+  for (const keyword of keywords) {
+
+    console.log(`Scanning ${keyword}`);
+
+    const reddit =
+      await scanReddit(keyword);
+
+    allLeads = [
+      ...allLeads,
+      ...reddit
+    ];
+
+  }
+
+  const existing =
+    loadExistingLinks();
+
+  allLeads =
+    allLeads.filter(
+      lead => !existing.has(lead.link)
+    );
+
+  if (allLeads.length > 0) {
+
+    await csvWriter.writeRecords(allLeads);
+
+    console.log(`${allLeads.length} leads saved`);
+
+  } else {
+
+    console.log("No new leads");
+
+  }
+
+}
+
+run();
