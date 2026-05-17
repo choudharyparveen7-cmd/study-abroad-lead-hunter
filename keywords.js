@@ -1,0 +1,20 @@
+export const keywords = [
+  "study abroad help",
+  "need admission abroad",
+  "australia intake 2026",
+  "canada intake 2026",
+  "uk september intake",
+  "urgent visa help",
+  "best course for australia",
+  "tafe australia",
+  "ielts requirement",
+  "scholarship abroad",
+  "masters abroad",
+  "cheap university australia",
+  "student visa help",
+  "which course has jobs",
+  "study abroad consultant",
+  "need counselling abroad",
+  "student visa urgent",
+  "upcoming intake abroad"
+];
