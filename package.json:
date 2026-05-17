@@ -1,8 +1,17 @@
 {
   "name": "study-abroad-lead-hunter",
-  "version": "1.0.0",
-  "main": "leadHunter.js",
+  "version": "3.0.0",
+  "description": "AI powered study abroad lead scanner",
+  "main": "scanner.js",
+  "type": "module",
   "scripts": {
-    "start": "node leadHunter.js"
+    "start": "node scanner.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "cheerio": "^1.0.0",
+    "csv-writer": "^1.6.0",
+    "dotenv": "^16.4.5",
+    "nodemailer": "^6.9.13"
   }
 }
